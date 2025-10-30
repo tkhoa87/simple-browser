@@ -1,8 +1,17 @@
 {
-  "name": "browser",
+  "name": "simple-browser",
   "version": "0.0.1",
+  "files": [
+    "./src/",
+    "./run"
+  ],
+  "bin": {
+    "browser": "./run"
+  },
   "scripts": {
-    "dev": "npx --yes nodemon@latest --watch src --ext ts --exec \"tsc && (electron '${PWD}/build/src/main.js' || sudo electron --no-sandbox '${PWD}/build/src/main.js' 2>/dev/null)\""
+    "main": "tsc && electron ./build/main.js",
+    "dev": "npx --yes nodemon@latest --watch src --ext ts --exec 'NODE_ENV=development npm run main'",
+    "start": "NODE_ENV=production npm run main"
   },
   "devDependencies": {
     "@types/node": "^24.9.2",

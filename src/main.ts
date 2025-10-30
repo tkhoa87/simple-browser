@@ -1,8 +1,6 @@
 import path from "node:path";
 
-import { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, shell } from "electron";
-
-import packageJSON from "../package.json";
+import { app, BrowserWindow, powerSaveBlocker } from "electron";
 
 
 app.name = "Browser";
@@ -12,10 +10,6 @@ app.commandLine.appendSwitch("disable-renderer-backgrounding");
 
 app.commandLine.appendSwitch("force_high_performance_gpu");
 
-// app.commandLine.appendSwitch("ignore-connections-limit", [
-//   `localhost:${process.env.PORT || 3001}`,
-// ].join(","));
-
 if (process.env.NODE_ENV !== "production") {
   app.commandLine.appendSwitch("remote-debugging-port", "9222");
 }
@@ -24,8 +18,8 @@ if (process.env.NODE_ENV !== "production") {
 function createWindow() {
 
   const window = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1024,
+    height: 768,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: true,
@@ -35,7 +29,7 @@ function createWindow() {
 
   window.maximize();
 
-  if (!app.isPackaged) {
+  if (process.env.NODE_ENV !== "production") {
     window.webContents.openDevTools();
   }
   
@@ -62,23 +56,8 @@ const powerSaveBlockerID = powerSaveBlocker.start("prevent-display-sleep");
 app.whenReady().then(() => {
 
 
-  // Menu
-  // setUpApplicationMenu();
-
-
   // Windows
   createWindow();
-
-
-  // IPC Events
-  ipcMain.handle("app.getPath", (_event, ...args: Parameters<typeof app.getPath>) => app.getPath(...args));
-  ipcMain.handle("app.getVersion", (_event, ...args: Parameters<typeof app.getVersion>) => app.getVersion(...args));
-  ipcMain.handle("app.getPackageVersion", () => packageJSON.version);
-  ipcMain.handle("dialog.showMessageBox", (_event, ...args: Parameters<typeof dialog.showMessageBox>) => dialog.showMessageBox(...args));
-  ipcMain.handle("dialog.showErrorBox", (_event, ...args: Parameters<typeof dialog.showErrorBox>) => dialog.showErrorBox(...args));
-  ipcMain.handle("dialog.showOpenDialog", (_event, ...args: Parameters<typeof dialog.showOpenDialog>) => dialog.showOpenDialog(...args));
-  ipcMain.handle("dialog.showSaveDialog", (_event, ...args: Parameters<typeof dialog.showSaveDialog>) => dialog.showSaveDialog(...args));
-  ipcMain.handle("shell.openPath", (_event, ...args: Parameters<typeof shell.openPath>) => shell.openPath(...args));
 
 
   // App Events
