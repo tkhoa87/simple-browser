@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, shell } from "electron";
 
 import packageJSON from "../package.json";
 
