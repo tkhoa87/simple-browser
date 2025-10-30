@@ -1,15 +1,16 @@
 {
   "name": "simple-browser",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "files": [
     "./src/",
+    "./tsconfig.json",
     "./run"
   ],
   "bin": {
     "browser": "run"
   },
   "scripts": {
-    "main": "tsc --project ./tsconfig.json && electron ./build/main.js",
+    "main": "tsc && electron ./build/main.js",
     "dev": "npx --yes nodemon@latest --watch src --ext ts --exec 'NODE_ENV=development npm run main'",
     "start": "NODE_ENV=production npm run main"
   },
