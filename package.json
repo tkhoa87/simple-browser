@@ -1,22 +1,24 @@
 {
   "name": "simple-browser",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "files": [
-    "./src/",
-    "./tsconfig.json",
+    "./build/",
     "./run"
   ],
   "bin": {
     "browser": "run"
   },
   "scripts": {
-    "main": "tsc && electron ./build/main.js",
-    "dev": "npx --yes nodemon@latest --watch src --ext ts --exec 'NODE_ENV=development npm run main'",
-    "start": "NODE_ENV=production npm run main"
+    "main": "electron ./build/main.js",
+    "dev": "npx --yes nodemon@latest --watch src --ext ts --exec 'tsc && NODE_ENV=development npm run main'",
+    "start": "NODE_ENV=production npm run main",
+    "prepublish": "tsc"
+  },
+  "dependencies": {
+    "electron": "^39.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.9.2",
-    "electron": "^39.0.0",
     "typescript": "^5.9.3"
   }
 }
