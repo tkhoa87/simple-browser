@@ -1,0 +1,12 @@
+{
+  "name": "browser",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "npx --yes nodemon@latest --watch src --ext ts --exec \"tsc && (electron '${PWD}/build/src/main.js' || sudo electron --no-sandbox '${PWD}/build/src/main.js' 2>/dev/null)\""
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.2",
+    "electron": "^39.0.0",
+    "typescript": "^5.9.3"
+  }
+}
