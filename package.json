@@ -1,12 +1,12 @@
 {
   "name": "simple-browser",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "files": [
     "./src/",
     "./run"
   ],
   "bin": {
-    "browser": "./run"
+    "browser": "run"
   },
   "scripts": {
     "main": "tsc && electron ./build/main.js",
