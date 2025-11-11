@@ -24,7 +24,7 @@ if (!remoteDebuggingPort) {
 app.commandLine.appendSwitch("remote-debugging-port", remoteDebuggingPort);
 
 
-const initialUrl = process.argv[2] || "https://www.google.com";
+const initialUrl = process.argv[2] || `http://localhost:${remoteDebuggingPort}/json/version`;
 
 
 function createWindow() {
