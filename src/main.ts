@@ -24,6 +24,9 @@ if (!remoteDebuggingPort) {
 app.commandLine.appendSwitch("remote-debugging-port", remoteDebuggingPort);
 
 
+const initialUrl = process.argv[2] || "https://www.google.com";
+
+
 function createWindow() {
 
   const window = new BrowserWindow({
@@ -42,7 +45,7 @@ function createWindow() {
     window.webContents.openDevTools();
   }
   
-  window.loadURL(`http://localhost:${remoteDebuggingPort}/json/version`);
+  window.loadURL(initialUrl);
 
   window.webContents.on("render-process-gone", (_event, details) => {
     if (
