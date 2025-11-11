@@ -1,6 +1,8 @@
 import path from "node:path";
+import net from "node:net";
 
 import { app, BrowserWindow, powerSaveBlocker } from "electron";
+import { findFreePorts } from "find-free-ports";
 
 
 app.name = "Browser";
@@ -10,9 +12,16 @@ app.commandLine.appendSwitch("disable-renderer-backgrounding");
 
 app.commandLine.appendSwitch("force_high_performance_gpu");
 
-if (process.env.NODE_ENV !== "production") {
-  app.commandLine.appendSwitch("remote-debugging-port", "9222");
+let remoteDebuggingPort = process.env.REMOTE_DEBUGGING_PORT;
+if (!remoteDebuggingPort) {
+  const [port] = await findFreePorts(1, { startPort: 9222 });
+  if (!port) {
+    throw new Error("Failed to find a free port for remote debugging");
+  }
+  remoteDebuggingPort = port.toString();
 }
+
+app.commandLine.appendSwitch("remote-debugging-port", remoteDebuggingPort);
 
 
 function createWindow() {
@@ -21,7 +30,7 @@ function createWindow() {
     width: 1024,
     height: 768,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(import.meta.dirname, "preload.js"),
       nodeIntegration: true,
       backgroundThrottling: false,
     },
@@ -33,7 +42,7 @@ function createWindow() {
     window.webContents.openDevTools();
   }
   
-  window.loadURL("about:blank");
+  window.loadURL(`http://localhost:${remoteDebuggingPort}/json/version`);
 
   window.webContents.on("render-process-gone", (_event, details) => {
     if (
