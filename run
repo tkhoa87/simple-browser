@@ -5,17 +5,6 @@ set -o errexit  # Exit when a command fails
 set -o pipefail # Catch mysqldump fails
 set -o nounset  # Exit when using undeclared variables
 
-FOLDER="$(readlink -f "${BASH_SOURCE[0]}" | xargs dirname)"
-
-cd "${FOLDER}" || exit 1
-
-if [[ ! -d "./node_modules" ]]; then
-  (
-    set -x
-    npm install >/dev/null
-  )
-fi
-
 (
   set -x
   npm start -- "$@"
