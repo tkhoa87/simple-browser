@@ -11,5 +11,5 @@ cd "${FOLDER}" || exit 1
 
 (
   set -x
-  npm start -- "$@"
+  npm start -- -- "$@"
 )

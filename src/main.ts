@@ -1,8 +1,8 @@
 import path from "node:path";
-import net from "node:net";
 
 import { app, BrowserWindow, powerSaveBlocker } from "electron";
 import { findFreePorts } from "find-free-ports";
+import { parseArgs } from "node:util";
 
 
 app.name = "Browser";
@@ -24,7 +24,13 @@ if (!remoteDebuggingPort) {
 app.commandLine.appendSwitch("remote-debugging-port", remoteDebuggingPort);
 
 
-const initialUrl = process.argv[2] || `http://localhost:${remoteDebuggingPort}/json/version`;
+const args = process.argv.slice(2);
+
+const initialUrl = args.pop() || `http://localhost:${remoteDebuggingPort}/json/version`;
+
+for (const arg of args) {
+  app.commandLine.appendSwitch(arg);
+}
 
 
 function createWindow() {
