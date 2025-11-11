@@ -46,6 +46,7 @@ npx --yes simple-browser@latest --disable-gpu https://example.com
 - The final positional argument is treated as the initial URL to load.  
 - Any preceding arguments are appended as Chromium command-line switches (for example `incognito`, `disable-gpu`, etc.).  
 - The app automatically enables remote debugging. Set `REMOTE_DEBUGGING_PORT` to pin it to a specific port; otherwise it chooses a free port starting at `9222`.
+- Tip: To navigate, open the DevTools console and run `window.location = "https://example.com"`.
 
 ## Project Structure
 
