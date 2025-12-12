@@ -33,3 +33,18 @@ const nav = {
 export type NavBridge = typeof nav;
 
 contextBridge.exposeInMainWorld("nav", nav);
+
+const ui = {
+  toggleDevTools() {
+    ipcRenderer.send("ui:toggleDevTools");
+  },
+  onDevToolsState(cb: (isOpen: boolean) => void) {
+    const listener = (_event: Electron.IpcRendererEvent, isOpen: boolean) => cb(isOpen);
+    ipcRenderer.on("ui:devtools-state", listener);
+    return () => ipcRenderer.off("ui:devtools-state", listener);
+  },
+};
+
+export type UiBridge = typeof ui;
+
+contextBridge.exposeInMainWorld("ui", ui);

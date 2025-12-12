@@ -51,7 +51,7 @@ npx --yes simple-browser@latest --disable-gpu https://example.com
 ## Project Structure
 
 - `src/main.ts` configures the Electron main process, window defaults, and crash recovery.
-- `src/preload.ts` exposes a minimal preload bridge (currently empty).
+- `src/preload-content.ts` exposes a minimal preload bridge (currently empty).
 - TypeScript sources compile to `build/` during publishing, and the `run` script wraps the packaged executable.
 
 ## Contributing

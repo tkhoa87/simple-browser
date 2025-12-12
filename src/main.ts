@@ -100,7 +100,12 @@ function navbarHtml() {
           --ring: 220 7% 65%;
         }
       }
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box; 
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
       html, body { height: 100%; }
       body {
         margin: 0;
@@ -117,6 +122,10 @@ function navbarHtml() {
         border-bottom: 0;
         background: hsl(var(--background));
         box-shadow: inset 0 -1px 0 hsla(var(--border) / 0.65);
+      }
+      .nav-buttons {
+        display: flex;
+        align-items: center;
       }
       .btn {
         display: inline-flex;
@@ -157,6 +166,14 @@ function navbarHtml() {
         border-color: hsl(var(--ring));
         box-shadow: 0 0 0 3px hsla(var(--ring) / 0.25);
       }
+      .url-row {
+        display: flex;
+        flex: 1 1 auto;
+        gap: 6px;
+        align-items: center;
+        border-radius: 8px;
+        overflow: hidden;
+      }
       .hint {
         font-size: 12px;
         color: hsl(var(--muted-foreground));
@@ -179,42 +196,51 @@ function navbarHtml() {
   </head>
   <body>
     <div class="bar">
-      <button id="back" class="btn" title="Back" aria-label="Back">
-        <span class="icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M15 18l-6-6 6-6"></path>
-          </svg>
-        </span>
-      </button>
-      <button id="forward" class="btn" title="Forward" aria-label="Forward">
-        <span class="icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 18l6-6-6-6"></path>
-          </svg>
-        </span>
-      </button>
-      <button id="reload" class="btn" title="Reload" aria-label="Reload">
-        <span class="icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12a9 9 0 1 1-3-6.7"></path>
-            <path d="M21 3v7h-7"></path>
-          </svg>
-        </span>
-      </button>
-      <button id="stop" class="btn" title="Stop" aria-label="Stop">
-        <span class="icon">✕</span>
-      </button>
 
-      <form id="form" style="display:flex; flex: 1 1 auto;">
+      <div class="nav-buttons">
+        <button id="back" class="btn" title="Back" aria-label="Back">
+          <span class="icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-icon lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          </span>
+        </button>
+        <button id="forward" class="btn" title="Forward" aria-label="Forward">
+          <span class="icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right-icon lucide-arrow-right"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </span>
+        </button>
+        <button id="reloadStop" class="btn" title="Reload" aria-label="Reload">
+          <span class="icon" aria-hidden="true">
+            <svg id="reloadStopIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-cw-icon lucide-rotate-cw">
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+              <path d="M21 3v5h-5"></path>
+            </svg>
+          </span>
+        </button>
+      </div>
+
+      <form id="form" class="url-row">
         <input id="url" class="input" placeholder="Search or enter URL" spellcheck="false" />
       </form>
+
+      <button id="devtools" class="btn" type="button" title="Open DevTools" aria-label="Open DevTools">
+        <span class="icon" aria-hidden="true">
+          <svg id="devtoolsIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- lucide-panel-right-open -->
+            <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+            <path d="M15 3v18"></path>
+            <path d="m10 15-3-3 3-3"></path>
+          </svg>
+        </span>
+      </button>
     </div>
     <div class="hint" id="status"></div>
     <script>
       const back = document.getElementById("back");
       const forward = document.getElementById("forward");
-      const reload = document.getElementById("reload");
-      const stop = document.getElementById("stop");
+      const reloadStop = document.getElementById("reloadStop");
+      const reloadStopIcon = document.getElementById("reloadStopIcon");
+      const devtools = document.getElementById("devtools");
+      const devtoolsIcon = document.getElementById("devtoolsIcon");
       const form = document.getElementById("form");
       const url = document.getElementById("url");
       const status = document.getElementById("status");
@@ -245,6 +271,32 @@ function navbarHtml() {
         status.textContent = isLoading ? "Loading…" : "";
       }
 
+      let lastIsLoading = false;
+      function setReloadStopButton(isLoading) {
+        lastIsLoading = !!isLoading;
+        if (!reloadStop) return;
+        if (!reloadStopIcon) return;
+        if (lastIsLoading) {
+          reloadStop.title = "Stop";
+          reloadStop.setAttribute("aria-label", "Stop");
+          // lucide-x
+          reloadStopIcon.setAttribute("class", "lucide lucide-x-icon lucide-x");
+          reloadStopIcon.innerHTML = \`
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          \`;
+          return;
+        }
+        reloadStop.title = "Reload";
+        reloadStop.setAttribute("aria-label", "Reload");
+        // lucide-rotate-cw
+        reloadStopIcon.setAttribute("class", "lucide lucide-rotate-cw-icon lucide-rotate-cw");
+        reloadStopIcon.innerHTML = \`
+          <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+          <path d="M21 3v5h-5"></path>
+        \`;
+      }
+
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const raw = url.value || "";
@@ -255,8 +307,39 @@ function navbarHtml() {
 
       back.addEventListener("click", () => window.nav?.back());
       forward.addEventListener("click", () => window.nav?.forward());
-      reload.addEventListener("click", () => window.nav?.reload());
-      stop.addEventListener("click", () => window.nav?.stop());
+      reloadStop.addEventListener("click", () => {
+        if (lastIsLoading) return window.nav?.stop();
+        return window.nav?.reload();
+      });
+      devtools.addEventListener("click", () => {
+        window.ui?.toggleDevTools?.();
+        url.focus();
+      });
+
+      function setDevToolsIcon(isOpen) {
+        if (!devtoolsIcon) return;
+        if (isOpen) {
+          // lucide-panel-right-close (DevTools open -> action is close)
+          devtools.title = "Close DevTools";
+          devtools.setAttribute("aria-label", "Close DevTools");
+          devtoolsIcon.innerHTML = \`
+            <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+            <path d="M15 3v18"></path>
+            <path d="m8 9 3 3-3 3"></path>
+          \`;
+          return;
+        }
+        // lucide-panel-right-open (DevTools closed -> action is open)
+        devtools.title = "Open DevTools";
+        devtools.setAttribute("aria-label", "Open DevTools");
+        devtoolsIcon.innerHTML = \`
+          <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+          <path d="M15 3v18"></path>
+          <path d="m10 15-3-3 3-3"></path>
+        \`;
+      }
+
+      window.ui?.onDevToolsState?.((isOpen) => setDevToolsIcon(!!isOpen));
 
       // Keep input in sync with real navigation.
       window.nav?.onUpdate((state) => {
@@ -271,6 +354,7 @@ function navbarHtml() {
         back.disabled = !state.canGoBack;
         forward.disabled = !state.canGoForward;
         setLoading(!!state.isLoading);
+        setReloadStopButton(!!state.isLoading);
       });
     </script>
   </body>
@@ -299,7 +383,6 @@ function createWindow() {
     width: 1024,
     height: 768,
     webPreferences: {
-      preload: path.join(import.meta.dirname, "preload.js"),
       nodeIntegration: true,
       backgroundThrottling: false,
     },
@@ -307,16 +390,11 @@ function createWindow() {
 
   window.maximize();
 
-  if (process.env.NODE_ENV !== "production") {
-    window.webContents.openDevTools();
-  }
-
-  // The BrowserWindow becomes a simple container; content is rendered via BrowserViews.
   window.loadURL("about:blank");
 
   const uiView = new BrowserView({
     webPreferences: {
-      preload: path.join(import.meta.dirname, "ui-preload.js"),
+      preload: path.join(import.meta.dirname, "preload-ui.js"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -326,6 +404,7 @@ function createWindow() {
 
   const contentView = new BrowserView({
     webPreferences: {
+      preload: path.join(import.meta.dirname, "preload-content.js"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -358,6 +437,10 @@ function createWindow() {
   uiView.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(navbarHtml())}`);
   contentView.webContents.loadURL(initialUrl);
 
+  if (process.env.NODE_ENV !== "production") {
+    contentView.webContents.openDevTools();
+  }
+
   let isLoading = false;
   const sendNavState = () => {
     const state: NavState = {
@@ -367,6 +450,10 @@ function createWindow() {
       isLoading,
     };
     uiView.webContents.send("nav:update", state);
+  };
+
+  const sendDevToolsState = () => {
+    uiView.webContents.send("ui:devtools-state", contentView.webContents.isDevToolsOpened());
   };
 
   contentView.webContents.on("did-start-loading", () => {
@@ -380,9 +467,14 @@ function createWindow() {
   contentView.webContents.on("did-navigate", sendNavState);
   contentView.webContents.on("did-navigate-in-page", sendNavState);
   contentView.webContents.on("page-title-updated", sendNavState);
+  contentView.webContents.on("devtools-opened", sendDevToolsState);
+  contentView.webContents.on("devtools-closed", sendDevToolsState);
 
   // Initial state once UI is ready.
-  uiView.webContents.on("did-finish-load", sendNavState);
+  uiView.webContents.on("did-finish-load", () => {
+    sendNavState();
+    sendDevToolsState();
+  });
 
   // Crash recovery: reload the affected view.
   contentView.webContents.on("render-process-gone", (_event, details) => {
@@ -431,6 +523,17 @@ function createWindow() {
   ipcMain.on("nav:stop", () => {
     contentView.webContents.stop();
     sendNavState();
+  });
+
+  ipcMain.removeAllListeners("ui:toggleDevTools");
+  ipcMain.on("ui:toggleDevTools", () => {
+    if (contentView.webContents.isDevToolsOpened()) {
+      contentView.webContents.closeDevTools();
+      sendDevToolsState();
+      return;
+    }
+    contentView.webContents.openDevTools();
+    sendDevToolsState();
   });
 
   return window;
