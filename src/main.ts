@@ -219,6 +219,28 @@ function navbarHtml() {
       const url = document.getElementById("url");
       const status = document.getElementById("status");
 
+      // Select-all behavior like a real browser address bar:
+      // - First click focuses + selects all
+      // - Subsequent clicks allow normal caret placement / partial selection
+      let selectAllOnNextFocus = false;
+      url.addEventListener("mousedown", () => {
+        if (document.activeElement !== url) {
+          selectAllOnNextFocus = true;
+        }
+      });
+      url.addEventListener("focus", () => {
+        if (selectAllOnNextFocus) {
+          url.select();
+        }
+      });
+      url.addEventListener("mouseup", (e) => {
+        if (selectAllOnNextFocus) {
+          // Prevent the mouseup from clearing the selection and placing the caret.
+          e.preventDefault();
+          selectAllOnNextFocus = false;
+        }
+      });
+
       function setLoading(isLoading) {
         status.textContent = isLoading ? "Loading…" : "";
       }
