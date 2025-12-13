@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { app, BrowserView, BrowserWindow, ipcMain, powerSaveBlocker } from "electron";
+import { app, BrowserWindow, ipcMain, powerSaveBlocker, WebContentsView } from "electron";
 import { findFreePorts } from "find-free-ports";
 import { parseArgs } from "node:util";
 
@@ -32,6 +32,7 @@ for (const arg of args) {
   app.commandLine.appendSwitch(arg);
 }
 
+
 type NavState = {
   url: string;
   canGoBack: boolean;
@@ -39,7 +40,9 @@ type NavState = {
   isLoading: boolean;
 };
 
+
 function normalizeNavigationTarget(raw: string): string {
+
   const input = raw.trim();
   if (!input) return "about:blank";
 
@@ -63,6 +66,7 @@ function normalizeNavigationTarget(raw: string): string {
   // Otherwise treat as a search query.
   return `https://www.google.com/search?q=${encodeURIComponent(input)}`;
 }
+
 
 function navbarHtml() {
   // "shadcn/ui"-styled (tokens + component-ish classes) without a Tailwind build step.
@@ -361,6 +365,7 @@ function navbarHtml() {
 </html>`;
 }
 
+
 function canGoBackFor(wc: Electron.WebContents): boolean {
   // Electron v39+: use navigationHistory
   const nh = (wc as unknown as { navigationHistory?: { canGoBack: () => boolean } }).navigationHistory;
@@ -368,6 +373,7 @@ function canGoBackFor(wc: Electron.WebContents): boolean {
   // Back-compat
   return (wc as unknown as { canGoBack?: () => boolean }).canGoBack?.() ?? false;
 }
+
 
 function canGoForwardFor(wc: Electron.WebContents): boolean {
   // Electron v39+: use navigationHistory
@@ -377,164 +383,29 @@ function canGoForwardFor(wc: Electron.WebContents): boolean {
   return (wc as unknown as { canGoForward?: () => boolean }).canGoForward?.() ?? false;
 }
 
+
 function createWindow() {
 
   const window = new BrowserWindow({
     width: 1024,
     height: 768,
     webPreferences: {
-      nodeIntegration: true,
+      preload: path.join(import.meta.dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
       backgroundThrottling: false,
+      devTools: true,
     },
   });
 
   window.maximize();
 
-  window.loadURL("about:blank");
-
-  const uiView = new BrowserView({
-    webPreferences: {
-      preload: path.join(import.meta.dirname, "preload-ui.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-      backgroundThrottling: false,
-    },
-  });
-
-  const contentView = new BrowserView({
-    webPreferences: {
-      preload: path.join(import.meta.dirname, "preload-content.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-      backgroundThrottling: false,
-    },
-  });
-
-  window.addBrowserView(uiView);
-  window.addBrowserView(contentView);
-
-  const NAVBAR_HEIGHT = 44;
-  const layout = () => {
-    const bounds = window.getContentBounds();
-    uiView.setBounds({ x: 0, y: 0, width: bounds.width, height: NAVBAR_HEIGHT });
-    contentView.setBounds({
-      x: 0,
-      y: NAVBAR_HEIGHT,
-      width: bounds.width,
-      height: Math.max(0, bounds.height - NAVBAR_HEIGHT),
-    });
-  };
-
-  uiView.setAutoResize({ width: true });
-  contentView.setAutoResize({ width: true, height: true });
-  window.on("resize", layout);
-  window.on("enter-full-screen", layout);
-  window.on("leave-full-screen", layout);
-  layout();
-
-  uiView.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(navbarHtml())}`);
-  contentView.webContents.loadURL(initialUrl);
+  window.webContents.loadURL(initialUrl);
 
   if (process.env.NODE_ENV !== "production") {
-    contentView.webContents.openDevTools();
+    window.webContents.openDevTools();
   }
-
-  let isLoading = false;
-  const sendNavState = () => {
-    const state: NavState = {
-      url: contentView.webContents.getURL() || "",
-      canGoBack: canGoBackFor(contentView.webContents),
-      canGoForward: canGoForwardFor(contentView.webContents),
-      isLoading,
-    };
-    uiView.webContents.send("nav:update", state);
-  };
-
-  const sendDevToolsState = () => {
-    uiView.webContents.send("ui:devtools-state", contentView.webContents.isDevToolsOpened());
-  };
-
-  contentView.webContents.on("did-start-loading", () => {
-    isLoading = true;
-    sendNavState();
-  });
-  contentView.webContents.on("did-stop-loading", () => {
-    isLoading = false;
-    sendNavState();
-  });
-  contentView.webContents.on("did-navigate", sendNavState);
-  contentView.webContents.on("did-navigate-in-page", sendNavState);
-  contentView.webContents.on("page-title-updated", sendNavState);
-  contentView.webContents.on("devtools-opened", sendDevToolsState);
-  contentView.webContents.on("devtools-closed", sendDevToolsState);
-
-  // Initial state once UI is ready.
-  uiView.webContents.on("did-finish-load", () => {
-    sendNavState();
-    sendDevToolsState();
-  });
-
-  // Crash recovery: reload the affected view.
-  contentView.webContents.on("render-process-gone", (_event, details) => {
-    if (details.reason === "crashed" || details.reason === "oom") {
-      contentView.webContents.reload();
-      return;
-    }
-    console.error(
-      "[Electron]",
-      "render-process-gone",
-      "exitCode",
-      details.exitCode,
-      "reason",
-      details.reason,
-    );
-  });
-
-  // IPC handlers: navbar -> content view
-  // (Scoped to this window; if you add multi-window later, move this wiring elsewhere.)
-  ipcMain.removeHandler("nav:navigate");
-  ipcMain.handle("nav:navigate", async (_event, raw: string) => {
-    const target = normalizeNavigationTarget(raw);
-    await contentView.webContents.loadURL(target);
-    sendNavState();
-  });
-
-  ipcMain.removeAllListeners("nav:back");
-  ipcMain.on("nav:back", () => {
-    if (canGoBackFor(contentView.webContents)) contentView.webContents.goBack();
-    sendNavState();
-  });
-
-  ipcMain.removeAllListeners("nav:forward");
-  ipcMain.on("nav:forward", () => {
-    if (canGoForwardFor(contentView.webContents)) contentView.webContents.goForward();
-    sendNavState();
-  });
-
-  ipcMain.removeAllListeners("nav:reload");
-  ipcMain.on("nav:reload", () => {
-    contentView.webContents.reload();
-    sendNavState();
-  });
-
-  ipcMain.removeAllListeners("nav:stop");
-  ipcMain.on("nav:stop", () => {
-    contentView.webContents.stop();
-    sendNavState();
-  });
-
-  ipcMain.removeAllListeners("ui:toggleDevTools");
-  ipcMain.on("ui:toggleDevTools", () => {
-    if (contentView.webContents.isDevToolsOpened()) {
-      contentView.webContents.closeDevTools();
-      sendDevToolsState();
-      return;
-    }
-    contentView.webContents.openDevTools();
-    sendDevToolsState();
-  });
 
   return window;
 }

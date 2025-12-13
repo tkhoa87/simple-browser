@@ -8,8 +8,8 @@ set -o nounset  # Exit when using undeclared variables
 FOLDER="$(readlink -f "${BASH_SOURCE[0]}" | xargs dirname)"
 cd "${FOLDER}" || exit 1
 
+export REMOTE_DEBUGGING_PORT="${REMOTE_DEBUGGING_PORT:-9222}"
 if (command -v lsof >/dev/null 2>&1); then
-  export REMOTE_DEBUGGING_PORT="${REMOTE_DEBUGGING_PORT:-9222}"
   echo
   echo "Killing remote debugging port ${REMOTE_DEBUGGING_PORT}..."
   (

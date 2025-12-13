@@ -12,7 +12,7 @@
   },
   "scripts": {
     "main": "electron ./build/main.js",
-    "dev": "npx --yes nodemon@latest --watch src --ext ts --exec 'tsc && NODE_ENV=development npm run main'",
+    "dev": "npx --yes nodemon@latest --watch src --ext ts --exec 'tsc && NODE_ENV=development REMOTE_DEBUGGING_PORT=9222 npm run main'",
     "start": "NODE_ENV=production npm run main",
     "prepublish": "tsc"
   },
@@ -21,7 +21,7 @@
     "find-free-ports": "^3.1.1"
   },
   "devDependencies": {
-    "@types/node": "^22.19.2",
+    "@types/node": "^24.10.3",
     "typescript": "^5.9.3"
   }
 }
