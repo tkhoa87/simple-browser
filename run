@@ -5,24 +5,82 @@ set -o errexit  # Exit when a command fails
 set -o pipefail # Catch mysqldump fails
 set -o nounset  # Exit when using undeclared variables
 
+# Usage function following UNIX standard
+usage() {
+  cat << EOF
+
+Usage: $(basename "$0") [OPTIONS] COMMAND
+
+COMMANDS:
+  start    Start the simple-browser process using PM2
+  stop     Stop and remove the simple-browser process from PM2
+
+OPTIONS:
+  -h, --help    Show this help message and exit
+
+EOF
+}
+
+# Handle --help flag
+if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
+
 FOLDER="$(readlink -f "${BASH_SOURCE[0]}" | xargs dirname)"
 cd "${FOLDER}" || exit 1
 
-export REMOTE_DEBUGGING_PORT="${REMOTE_DEBUGGING_PORT:-9222}"
-if (command -v lsof >/dev/null 2>&1); then
-  echo
-  echo "Killing remote debugging port ${REMOTE_DEBUGGING_PORT}..."
+if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
+
+  COMMAND="${1}"
+  shift
+
+  case "${COMMAND}" in
+
+    start)
+      echo
+      echo "Starting simple-browser..."
+      npx --yes pm2 start --name simple-browser 'npx --yes simple-browser@latest'
+      echo
+      npx --yes pm2 save
+      echo
+      echo "simple-browser started and saved"
+      ;;
+
+    stop)
+      echo
+      echo "Stopping simple-browser..."
+      npx --yes pm2 delete simple-browser || true
+      echo
+      npx --yes pm2 save
+      echo
+      echo "simple-browser stopped and saved"
+      ;;
+
+  esac
+
+else
+
+  usage
+
+  # Default behavior: run the original code
+  export REMOTE_DEBUGGING_PORT="${REMOTE_DEBUGGING_PORT:-9222}"
+  if (command -v lsof >/dev/null 2>&1); then
+    echo
+    echo "Killing remote debugging port ${REMOTE_DEBUGGING_PORT}..."
+    (
+      lsof -t -i ":${REMOTE_DEBUGGING_PORT}" | 
+        xargs kill || 
+        true
+    )
+  fi
+
+  export DISPLAY="${DISPLAY:-:0}"
+
   (
-	lsof -t -i ":${REMOTE_DEBUGGING_PORT}" | 
-	  xargs kill || 
-	  true
+    echo
+    # set -x
+    npm start -- -- "$@"
   )
+
 fi
-
-export DISPLAY="${DISPLAY:-:0}"
-
-(
-  echo
-  # set -x
-  npm start -- -- "$@"
-)
