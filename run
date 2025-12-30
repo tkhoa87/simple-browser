@@ -30,6 +30,10 @@ EXAMPLES:
   $(basename "$0") https://example.com
   $(basename "$0") --port 9333 https://example.com
   $(basename "$0") --disable-gpu --proxy-server=http://proxy:8080 https://example.com
+  $(basename "$0") start
+  $(basename "$0") stop
+  $(basename "$0") start --port 9333
+  $(basename "$0") stop --port 9333
 
 EOF
 }
