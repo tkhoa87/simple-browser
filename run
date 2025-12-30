@@ -9,14 +9,27 @@ set -o nounset  # Exit when using undeclared variables
 usage() {
   cat << EOF
 
-Usage: $(basename "$0") [OPTIONS] COMMAND
+Usage: $(basename "$0") [OPTIONS] [URL]
+       $(basename "$0") COMMAND
 
 COMMANDS:
   start    Start the simple-browser process using PM2
   stop     Stop and remove the simple-browser process from PM2
 
 OPTIONS:
-  -h, --help    Show this help message and exit
+  -h, --help                     Show this help message and exit
+  --remote-debugging-port PORT   Set remote debugging port (highest priority)
+  --port PORT                    Set remote debugging port (alias)
+  -p PORT                        Set remote debugging port (short alias)
+  --<chromium-switch>[=VALUE]    Pass switch to Chromium (e.g., --disable-gpu)
+
+ENVIRONMENT:
+  REMOTE_DEBUGGING_PORT   Default port if not specified via CLI (default: 9222)
+
+EXAMPLES:
+  $(basename "$0") https://example.com
+  $(basename "$0") --port 9333 https://example.com
+  $(basename "$0") --disable-gpu --proxy-server=http://proxy:8080 https://example.com
 
 EOF
 }
@@ -63,23 +76,10 @@ else
 
   usage
 
-  # Default behavior: run the original code
-  export REMOTE_DEBUGGING_PORT="${REMOTE_DEBUGGING_PORT:-9222}"
-  if (command -v lsof >/dev/null 2>&1); then
-    echo
-    echo "Killing remote debugging port ${REMOTE_DEBUGGING_PORT}..."
-    (
-      lsof -t -i ":${REMOTE_DEBUGGING_PORT}" | 
-        xargs kill || 
-        true
-    )
-  fi
-
   export DISPLAY="${DISPLAY:-:0}"
 
   (
     echo
-    # set -x
     npm start -- -- "$@"
   )
 

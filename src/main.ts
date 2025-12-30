@@ -1,6 +1,7 @@
 import path from "node:path";
+import { execSync } from "node:child_process";
 
-import { app, BrowserWindow, powerSaveBlocker, Menu, MenuItem, ipcMain } from "electron";
+import { app, BrowserWindow, powerSaveBlocker, Menu, ipcMain } from "electron";
 import { findFreePorts } from "find-free-ports";
 
 
@@ -13,7 +14,59 @@ app.commandLine.appendSwitch("force_high_performance_gpu");
 
 let mainWindow: BrowserWindow | null = null;
 
-let remoteDebuggingPort = process.env.REMOTE_DEBUGGING_PORT;
+// Parse CLI arguments
+const args = process.argv.slice(2);
+const chromiumSwitches: Array<[string, string?]> = [];
+const portOptions: { remoteDebuggingPort?: string; port?: string; p?: string } = {};
+let initialUrl: string | undefined;
+
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i];
+
+  // Handle --key=value format
+  if (arg.startsWith("--") && arg.includes("=")) {
+    const [key, ...rest] = arg.slice(2).split("=");
+    const value = rest.join("=");
+    if (key === "remote-debugging-port") {
+      portOptions.remoteDebuggingPort = value;
+    } else if (key === "port") {
+      portOptions.port = value;
+    } else {
+      chromiumSwitches.push([key, value]);
+    }
+  }
+  // Handle --key value format
+  else if (arg.startsWith("--")) {
+    const key = arg.slice(2);
+    const nextArg = args[i + 1];
+    const hasValue = nextArg && !nextArg.startsWith("-");
+    if (key === "remote-debugging-port" && hasValue) {
+      portOptions.remoteDebuggingPort = args[++i];
+    } else if (key === "port" && hasValue) {
+      portOptions.port = args[++i];
+    } else if (hasValue) {
+      chromiumSwitches.push([key, args[++i]]);
+    } else {
+      chromiumSwitches.push([key]);
+    }
+  }
+  // Handle -p value format
+  else if (arg === "-p") {
+    portOptions.p = args[++i];
+  }
+  // Positional argument (URL)
+  else if (!arg.startsWith("-")) {
+    initialUrl = arg;
+  }
+}
+
+// Determine remote debugging port (priority: --remote-debugging-port > --port > -p > env)
+let remoteDebuggingPort =
+  portOptions.remoteDebuggingPort ||
+  portOptions.port ||
+  portOptions.p ||
+  process.env.REMOTE_DEBUGGING_PORT;
+
 if (!remoteDebuggingPort) {
   const [port] = await findFreePorts(1, { startPort: 9222 });
   if (!port) {
@@ -22,16 +75,20 @@ if (!remoteDebuggingPort) {
   remoteDebuggingPort = port.toString();
 }
 
+// Kill any existing process on the remote debugging port
+try {
+  execSync(`lsof -t -i :${remoteDebuggingPort} | xargs kill 2>/dev/null`, { stdio: "ignore" });
+} catch {
+  // Ignore errors (no process found or lsof not available)
+}
+
 app.commandLine.appendSwitch("remote-debugging-port", remoteDebuggingPort);
 
-
-const args = process.argv.slice(2);
-
-const initialUrl = args.pop() || `http://localhost:${remoteDebuggingPort}/json/version`;
-
-for (const arg of args) {
-  app.commandLine.appendSwitch(arg);
+for (const [key, value] of chromiumSwitches) {
+  app.commandLine.appendSwitch(key, value);
 }
+
+const urlToLoad = initialUrl ?? `http://localhost:${remoteDebuggingPort}/json/version`;
 
 
 function createWindow() {
@@ -51,7 +108,7 @@ function createWindow() {
 
   window.maximize();
 
-  window.webContents.loadURL(initialUrl);
+  window.webContents.loadURL(urlToLoad);
 
   if (process.env.NODE_ENV !== "production") {
     window.webContents.openDevTools();
