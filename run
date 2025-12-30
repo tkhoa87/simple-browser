@@ -51,23 +51,73 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
   case "${COMMAND}" in
 
     start)
+      # Save original arguments
+      ARGS="$*"
+      # Extract port from arguments
+      PORT=""
+      for arg in "$@"; do
+        case "$arg" in
+          --port=*|--remote-debugging-port=*|-p=*)
+            PORT="${arg#*=}"
+            ;;
+        esac
+      done
+      # Check for space-separated port value
+      if [[ -z "$PORT" ]]; then
+        while [[ $# -gt 0 ]]; do
+          case "$1" in
+            --port|--remote-debugging-port|-p)
+              PORT="$2"
+              break
+              ;;
+          esac
+          shift
+        done
+      fi
+      PORT="${PORT:-9222}"
+      NAME="simple-browser-${PORT}"
+
       echo
-      echo "Starting simple-browser..."
-      npx --yes pm2 start --name simple-browser 'npx --yes simple-browser@latest'
+      echo "Starting ${NAME}..."
+      npx --yes pm2 start --name "$NAME" "npx --yes simple-browser@latest ${ARGS}"
       echo
       npx --yes pm2 save
       echo
-      echo "simple-browser started and saved"
+      echo "${NAME} started and saved"
       ;;
 
     stop)
+      # Extract port from arguments
+      PORT=""
+      for arg in "$@"; do
+        case "$arg" in
+          --port=*|--remote-debugging-port=*|-p=*)
+            PORT="${arg#*=}"
+            ;;
+        esac
+      done
+      # Check for space-separated port value
+      if [[ -z "$PORT" ]]; then
+        while [[ $# -gt 0 ]]; do
+          case "$1" in
+            --port|--remote-debugging-port|-p)
+              PORT="$2"
+              break
+              ;;
+          esac
+          shift
+        done
+      fi
+      PORT="${PORT:-9222}"
+      NAME="simple-browser-${PORT}"
+
       echo
-      echo "Stopping simple-browser..."
-      npx --yes pm2 delete simple-browser || true
+      echo "Stopping ${NAME}..."
+      npx --yes pm2 delete "$NAME" || true
       echo
       npx --yes pm2 save
       echo
-      echo "simple-browser stopped and saved"
+      echo "${NAME} stopped and saved"
       ;;
 
   esac
