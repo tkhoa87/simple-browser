@@ -111,7 +111,7 @@ kill_port() {
 # Start Chrome with remote debugging
 start_chrome() {
   local PORT="${1:-${REMOTE_DEBUGGING_PORT:-9222}}"
-  local USER_DATA_DIR="/tmp/chrome-debug-${PORT}"
+  local USER_DATA_DIR="/tmp/simple-browser-${PORT}"
   shift || true
   local CHROME_BIN
   CHROME_BIN=$(find_chrome) || {
@@ -186,7 +186,7 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
 
       if [[ "$BROWSER" == "chrome" ]]; then
         PORT="${PORT:-${REMOTE_DEBUGGING_PORT:-9222}}"
-        NAME="chrome-debug-${PORT}"
+        NAME="simple-browser-${PORT}"
         CHROME_BIN=$(find_chrome) || {
           echo "Error: Chrome not found. Install Google Chrome or Chromium." >&2
           exit 1
@@ -217,7 +217,7 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
         done
 
         # Build Chrome command
-        USER_DATA_DIR="/tmp/chrome-debug-${PORT}"
+        USER_DATA_DIR="/tmp/simple-browser-${PORT}"
         CHROME_CMD="\"${CHROME_BIN}\" --remote-debugging-port=${PORT} --user-data-dir=${USER_DATA_DIR} --no-first-run --no-default-browser-check --start-maximized"
 
         # Add user args
@@ -280,7 +280,7 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
 
       if [[ "$BROWSER" == "chrome" ]]; then
         PORT="${PORT:-${REMOTE_DEBUGGING_PORT:-9222}}"
-        NAME="chrome-debug-${PORT}"
+        NAME="simple-browser-${PORT}"
       else
         PORT="${PORT:-9222}"
         NAME="simple-browser-${PORT}"
