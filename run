@@ -96,6 +96,12 @@ parse_browser_option() {
   done
 }
 
+# Check if PM2 process exists
+pm2_process_exists() {
+  local NAME="$1"
+  npx --yes pm2 describe "$NAME" &>/dev/null
+}
+
 # Kill process on port if occupied
 kill_port() {
   local PORT="$1"
@@ -187,6 +193,14 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
       if [[ "$BROWSER" == "chrome" ]]; then
         PORT="${PORT:-${REMOTE_DEBUGGING_PORT:-9222}}"
         NAME="simple-browser-${PORT}"
+
+        # Check if process already exists in PM2
+        if pm2_process_exists "$NAME"; then
+          echo
+          echo "${NAME} is already running in PM2. Skipping start."
+          exit 0
+        fi
+
         CHROME_BIN=$(find_chrome) || {
           echo "Error: Chrome not found. Install Google Chrome or Chromium." >&2
           exit 1
@@ -235,6 +249,14 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
       else
         PORT="${PORT:-9222}"
         NAME="simple-browser-${PORT}"
+
+        # Check if process already exists in PM2
+        if pm2_process_exists "$NAME"; then
+          echo
+          echo "${NAME} is already running in PM2. Skipping start."
+          exit 0
+        fi
+
         # Build args string without browser option
         ARGS=""
         for arg in "$@"; do

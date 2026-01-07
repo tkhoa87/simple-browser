@@ -75,13 +75,6 @@ if (!remoteDebuggingPort) {
   remoteDebuggingPort = port.toString();
 }
 
-// Kill any existing process on the remote debugging port
-try {
-  execSync(`lsof -t -i :${remoteDebuggingPort} | xargs kill 2>/dev/null`, { stdio: "ignore" });
-} catch {
-  // Ignore errors (no process found or lsof not available)
-}
-
 app.commandLine.appendSwitch("remote-debugging-port", remoteDebuggingPort);
 
 for (const [key, value] of chromiumSwitches) {
