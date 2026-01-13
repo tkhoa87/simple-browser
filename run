@@ -243,9 +243,7 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
         echo "Starting ${NAME}..."
         npx --yes pm2 start --name "$NAME" "$CHROME_CMD"
         echo
-        npx --yes pm2 save
-        echo
-        echo "${NAME} started and saved"
+        echo "${NAME} started"
       else
         PORT="${PORT:-9222}"
         NAME="simple-browser-${PORT}"
@@ -267,9 +265,7 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
         echo "Starting ${NAME}..."
         npx --yes pm2 start --name "$NAME" "npx --yes simple-browser@latest${ARGS}"
         echo
-        npx --yes pm2 save
-        echo
-        echo "${NAME} started and saved"
+        echo "${NAME} started"
       fi
       ;;
 
@@ -312,9 +308,7 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
       echo "Stopping ${NAME}..."
       npx --yes pm2 delete "$NAME" || true
       echo
-      npx --yes pm2 save
-      echo
-      echo "${NAME} stopped and saved"
+      echo "${NAME} stopped"
       ;;
 
   esac
