@@ -102,6 +102,36 @@ pm2_process_exists() {
   npx --yes pm2@latest describe "$NAME" &>/dev/null
 }
 
+# Acquire a filesystem lock (mkdir is atomic on all UNIX systems)
+acquire_lock() {
+  local LOCKDIR="$1"
+  local MAX_WAIT=30
+  local WAITED=0
+  while ! mkdir "$LOCKDIR" 2>/dev/null; do
+    # Check for stale lock (older than 60s)
+    if [[ -d "$LOCKDIR" ]]; then
+      local LOCK_AGE
+      LOCK_AGE=$(( $(date +%s) - $(stat -f %m "$LOCKDIR" 2>/dev/null || stat -c %Y "$LOCKDIR" 2>/dev/null || echo 0) ))
+      if [[ $LOCK_AGE -gt 60 ]]; then
+        echo "Removing stale lock (${LOCK_AGE}s old)." >&2
+        rmdir "$LOCKDIR" 2>/dev/null || rm -rf "$LOCKDIR"
+        continue
+      fi
+    fi
+    if [[ $WAITED -ge $MAX_WAIT ]]; then
+      echo "Warning: Lock timeout after ${MAX_WAIT}s. Breaking lock." >&2
+      rmdir "$LOCKDIR" 2>/dev/null || rm -rf "$LOCKDIR"
+      continue
+    fi
+    sleep 1
+    WAITED=$((WAITED + 1))
+  done
+}
+
+release_lock() {
+  rmdir "$1" 2>/dev/null || true
+}
+
 # Kill process on port if occupied
 kill_port() {
   local PORT="$1"
@@ -194,14 +224,20 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
         PORT="${PORT:-${REMOTE_DEBUGGING_PORT:-9222}}"
         NAME="simple-browser-${PORT}"
 
-        # Check if process already exists in PM2
+        LOCKDIR="/tmp/simple-browser-${NAME}.lock"
+        acquire_lock "$LOCKDIR"
+        trap "release_lock '$LOCKDIR'" EXIT
+
+        # Check if process already exists in PM2 (inside lock to prevent races)
         if pm2_process_exists "$NAME"; then
           echo
           echo "${NAME} already exists in PM2. Skipping start."
+          release_lock "$LOCKDIR"
           exit 0
         fi
 
         CHROME_BIN=$(find_chrome) || {
+          release_lock "$LOCKDIR"
           echo "Error: Chrome not found. Install Google Chrome or Chromium." >&2
           exit 1
         }
@@ -244,14 +280,20 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
         npx --yes pm2@latest start --no-autorestart -i 1 --name "$NAME" "$CHROME_CMD"
         echo
         echo "${NAME} started"
+        release_lock "$LOCKDIR"
       else
         PORT="${PORT:-9222}"
         NAME="simple-browser-${PORT}"
 
-        # Check if process already exists in PM2
+        LOCKDIR="/tmp/simple-browser-${NAME}.lock"
+        acquire_lock "$LOCKDIR"
+        trap "release_lock '$LOCKDIR'" EXIT
+
+        # Check if process already exists in PM2 (inside lock to prevent races)
         if pm2_process_exists "$NAME"; then
           echo
           echo "${NAME} already exists in PM2. Skipping start."
+          release_lock "$LOCKDIR"
           exit 0
         fi
 
@@ -266,6 +308,7 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
         npx --yes pm2@latest start --no-autorestart -i 1 --name "$NAME" "npx --yes simple-browser@latest${ARGS}"
         echo
         echo "${NAME} started"
+        release_lock "$LOCKDIR"
       fi
       ;;
 
