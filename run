@@ -241,7 +241,7 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
 
         echo
         echo "Starting ${NAME}..."
-        npx --yes pm2@latest start --no-autorestart --name "$NAME" "$CHROME_CMD"
+        npx --yes pm2@latest start --no-autorestart -i 1 --name "$NAME" "$CHROME_CMD"
         echo
         echo "${NAME} started"
       else
@@ -263,7 +263,7 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
 
         echo
         echo "Starting ${NAME}..."
-        npx --yes pm2@latest start --no-autorestart --name "$NAME" "npx --yes simple-browser@latest${ARGS}"
+        npx --yes pm2@latest start --no-autorestart -i 1 --name "$NAME" "npx --yes simple-browser@latest${ARGS}"
         echo
         echo "${NAME} started"
       fi
