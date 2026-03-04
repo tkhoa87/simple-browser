@@ -102,6 +102,21 @@ pm2_process_exists() {
   npx --yes pm2@latest describe "$NAME" &>/dev/null
 }
 
+# Check if PM2 process is online
+pm2_process_online() {
+  local NAME="$1"
+  local STATUS
+  STATUS=$(npx --yes pm2@latest jlist 2>/dev/null | python3 -c "
+import sys, json
+procs = json.load(sys.stdin)
+for p in procs:
+    if p.get('name') == '$NAME':
+        print(p.get('pm2_env', {}).get('status', ''))
+        break
+" 2>/dev/null || true)
+  [[ "$STATUS" == "online" ]]
+}
+
 # Acquire a filesystem lock (mkdir is atomic on all UNIX systems)
 acquire_lock() {
   local LOCKDIR="$1"
@@ -230,10 +245,16 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
 
         # Check if process already exists in PM2 (inside lock to prevent races)
         if pm2_process_exists "$NAME"; then
-          echo
-          echo "${NAME} already exists in PM2. Skipping start."
-          release_lock "$LOCKDIR"
-          exit 0
+          if pm2_process_online "$NAME"; then
+            echo
+            echo "${NAME} already running in PM2. Skipping start."
+            release_lock "$LOCKDIR"
+            exit 0
+          else
+            echo
+            echo "${NAME} exists but is not running. Restarting..."
+            npx --yes pm2@latest delete "$NAME" 2>/dev/null || true
+          fi
         fi
 
         CHROME_BIN=$(find_chrome) || {
@@ -291,10 +312,16 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
 
         # Check if process already exists in PM2 (inside lock to prevent races)
         if pm2_process_exists "$NAME"; then
-          echo
-          echo "${NAME} already exists in PM2. Skipping start."
-          release_lock "$LOCKDIR"
-          exit 0
+          if pm2_process_online "$NAME"; then
+            echo
+            echo "${NAME} already running in PM2. Skipping start."
+            release_lock "$LOCKDIR"
+            exit 0
+          else
+            echo
+            echo "${NAME} exists but is not running. Restarting..."
+            npx --yes pm2@latest delete "$NAME" 2>/dev/null || true
+          fi
         fi
 
         # Build args string without browser option
