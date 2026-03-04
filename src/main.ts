@@ -416,7 +416,7 @@ app.whenReady().then(() => {
             submenuItems.push({
               label: subItem.label,
               role: subItem.role as Electron.MenuItemConstructorOptions["role"],
-              accelerator: subItem.accelerator,
+              accelerator: subItem.accelerator ?? undefined,
               click: subItem.click as Electron.MenuItemConstructorOptions["click"],
             });
           }

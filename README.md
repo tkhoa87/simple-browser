@@ -1,15 +1,6 @@
 # Simple Browser
 
-Simple Browser is a tiny Electron shell that launches a Chromium window with remote debugging enabled. The project is published as an npm binary so you can spin up a clean browser profile from the command line in seconds.
-
-- [Simple Browser](#simple-browser)
-  - [Quick Start](#quick-start)
-    - [Run once](#run-once)
-    - [Install globally then run](#install-globally-then-run)
-  - [CLI Usage](#cli-usage)
-  - [Project Structure](#project-structure)
-  - [Contributing](#contributing)
-  - [License](#license)
+Simple Browser is a tiny Electron shell that launches a Chromium window with remote debugging enabled. It can also launch native Chrome/Chromium instead. Published as an npm binary so you can spin up a clean browser profile from the command line in seconds.
 
 ## Quick Start
 
@@ -31,54 +22,88 @@ simple-browser
 browser
 ```
 
-When no URL is provided, the browser opens the Chrome DevTools protocol version endpoint that is exposed on the bundled remote debugging port.
+When no URL is provided, the browser opens the Chrome DevTools Protocol version endpoint on the remote debugging port.
 
 ## CLI Usage
 
 ```bash
-# Open a specific URL
-npx --yes simple-browser@latest https://example.com
-
-# Pass Chromium command-line switches before the URL
-npx --yes simple-browser@latest --disable-gpu https://example.com
+simple-browser [OPTIONS] [URL]
+simple-browser COMMAND [OPTIONS]
 ```
 
-- The final positional argument is treated as the initial URL to load.  
-- Any preceding arguments are appended as Chromium command-line switches (for example `incognito`, `disable-gpu`, etc.).  
-- The app automatically enables remote debugging. Set `REMOTE_DEBUGGING_PORT` to pin it to a specific port; otherwise it chooses a free port starting at `9222`.
-- Tip: To navigate, open the DevTools console and run `window.location = "https://example.com"`.
+### Options
+
+| Option                         | Description                                         |
+| ------------------------------ | --------------------------------------------------- |
+| `-b, --browser BROWSER`        | Browser to use: `electron` (default) or `chrome`    |
+| `--remote-debugging-port PORT` | Set remote debugging port (highest priority)        |
+| `--port PORT`                  | Set remote debugging port (alias)                   |
+| `-p PORT`                      | Set remote debugging port (short alias)             |
+| `--<chromium-switch>[=VALUE]`  | Pass any switch to Chromium (e.g., `--disable-gpu`) |
+| `-h, --help`                   | Show help message                                   |
+
+### Commands
+
+| Command | Description                               |
+| ------- | ----------------------------------------- |
+| `start` | Start a background process managed by PM2 |
+| `stop`  | Stop and remove the PM2-managed process   |
+
+### Examples
+
+```bash
+# Open a URL in Electron
+simple-browser https://example.com
+
+# Open a URL in native Chrome
+simple-browser -b chrome https://example.com
+
+# Set a specific remote debugging port
+simple-browser --port 9333 https://example.com
+
+# Pass Chromium switches
+simple-browser --disable-gpu --proxy-server=http://proxy:8080 https://example.com
+
+# Start as a background process (PM2)
+simple-browser start
+simple-browser start --port 9333
+
+# Stop a background process
+simple-browser stop
+simple-browser stop --port 9333
+```
+
+### Port Priority
+
+The remote debugging port is resolved in this order:
+
+1. `--remote-debugging-port` CLI option
+2. `--port` CLI option
+3. `-p` CLI option
+4. `REMOTE_DEBUGGING_PORT` environment variable
+5. Auto-find a free port starting at 9222
+
+### In-App Navigation
+
+Press **Cmd+L** (macOS) or **Ctrl+L** (Windows/Linux) to open the Navigate dialog and go to a different URL.
 
 ## Project Structure
 
-- `src/main.ts` configures the Electron main process, window defaults, and crash recovery.
-- `src/preload-content.ts` exposes a minimal preload bridge (currently empty).
-- TypeScript sources compile to `build/` during publishing, and the `run` script wraps the packaged executable.
+| File             | Description                                                                 |
+| ---------------- | --------------------------------------------------------------------------- |
+| `src/main.ts`    | Electron main process — window creation, CLI parsing, menu, navigate dialog |
+| `src/preload.ts` | Minimal preload bridge (`electronBridge`, currently empty)                  |
+| `run`            | Bash entry point — CLI parsing, Chrome mode, PM2 start/stop                 |
+| `build/`         | Compiled TypeScript output                                                  |
 
 ## Contributing
 
-1. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-2. Run the development build (watches `src/` with `nodemon` and opens devtools):
-
-   ```bash
-   npm run dev
-   ```
-
-3. For a production-like launch:
-
-   ```bash
-   npm start
-   ```
-
-4. For publish:
-
-   ```bash
-   npm publish --access public
-   ```
+```bash
+npm install                  # Install dependencies
+npm run dev                  # Development (watches src/, auto-rebuilds, opens DevTools)
+npm start                    # Production-like launch
+npm publish --access public  # Publish to npm
+```
 
 Pull requests are welcome! Please describe any behavioral changes and include testing notes.
 
