@@ -1,11 +1,90 @@
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
+import http from "node:http";
+import net from "node:net";
 
 import { app, BrowserWindow, powerSaveBlocker, Menu, ipcMain } from "electron";
 import { findFreePorts } from "find-free-ports";
 
 
 app.name = "Browser";
+
+function cdpRequest(port: string, endpoint: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const req = http.get(`http://localhost:${port}${endpoint}`, { timeout: 3000 }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch {
+          reject(new Error("Invalid JSON"));
+        }
+      });
+    });
+    req.on("error", reject);
+    req.on("timeout", () => { req.destroy(); reject(new Error("Timeout")); });
+  });
+}
+
+/** Check if port is occupied and handle CDP-aware logic.
+ *  Returns true if we should start our browser, false if we should exit. */
+async function handleOccupiedPort(port: string): Promise<boolean> {
+  const isOccupied = await new Promise<boolean>((resolve) => {
+    const socket = new net.Socket();
+    socket.setTimeout(1000);
+    socket.on("connect", () => { socket.destroy(); resolve(true); });
+    socket.on("error", () => resolve(false));
+    socket.on("timeout", () => { socket.destroy(); resolve(false); });
+    socket.connect(Number(port), "localhost");
+  });
+
+  if (!isOccupied) return true;
+
+  console.log(`Port ${port} is occupied. Checking if it's a CDP endpoint...`);
+
+  // Check if it's a CDP endpoint
+  let isCDP = false;
+  try {
+    await cdpRequest(port, "/json/version");
+    isCDP = true;
+  } catch {}
+
+  if (!isCDP) {
+    console.log(`Not a CDP endpoint. Killing process on port ${port}...`);
+    try {
+      const pid = execFileSync("lsof", ["-ti", `:${port}`], { encoding: "utf-8" }).trim();
+      if (pid) {
+        for (const p of pid.split("\n")) {
+          process.kill(Number(p), "SIGKILL");
+        }
+      }
+    } catch {}
+    await new Promise((r) => setTimeout(r, 500));
+    return true;
+  }
+
+  console.log("CDP endpoint detected.");
+
+  // Check for open tabs
+  let tabCount = 0;
+  try {
+    const tabs: any[] = await cdpRequest(port, "/json/list");
+    tabCount = tabs.filter((t) => t.type === "page").length;
+  } catch {}
+
+  if (tabCount === 0) {
+    console.log("No tabs open. Opening a new tab...");
+    try {
+      await cdpRequest(port, "/json/new");
+    } catch {}
+    console.log(`New tab opened on existing browser (port ${port}). Exiting.`);
+    return false;
+  }
+
+  console.log(`Browser already has ${tabCount} tab(s) open on port ${port}. Exiting.`);
+  return false;
+}
 
 
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
@@ -73,6 +152,12 @@ if (!remoteDebuggingPort) {
     throw new Error("Failed to find a free port for remote debugging");
   }
   remoteDebuggingPort = port.toString();
+}
+
+// Check if port is occupied and handle CDP-aware logic
+const shouldStart = await handleOccupiedPort(remoteDebuggingPort);
+if (!shouldStart) {
+  app.exit(0);
 }
 
 app.commandLine.appendSwitch("remote-debugging-port", remoteDebuggingPort);

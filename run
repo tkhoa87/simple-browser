@@ -147,15 +147,51 @@ release_lock() {
   rmdir "$1" 2>/dev/null || true
 }
 
-# Kill process on port if occupied
-kill_port() {
+# Handle occupied port with CDP-aware logic
+# Returns 0 if we should start our browser, 1 if we should exit (existing browser handles it)
+handle_occupied_port() {
   local PORT="$1"
   local PID
   PID=$(lsof -ti ":${PORT}" 2>/dev/null || true)
-  if [[ -n "$PID" ]]; then
-    echo "Killing process on port ${PORT} (PID: ${PID})..."
+  if [[ -z "$PID" ]]; then
+    return 0
+  fi
+
+  echo "Port ${PORT} is occupied (PID: ${PID}). Checking if it's a CDP endpoint..."
+
+  # Check if it's a CDP endpoint
+  local CDP_RESPONSE
+  CDP_RESPONSE=$(curl -s --max-time 3 "http://localhost:${PORT}/json/version" 2>/dev/null || true)
+
+  if [[ -z "$CDP_RESPONSE" ]] || ! echo "$CDP_RESPONSE" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+    echo "Not a CDP endpoint. Killing process on port ${PORT} (PID: ${PID})..."
     kill -9 $PID 2>/dev/null || true
     sleep 0.5
+    return 0
+  fi
+
+  echo "CDP endpoint detected."
+
+  # Check for open tabs
+  local TAB_COUNT
+  TAB_COUNT=$(curl -s --max-time 3 "http://localhost:${PORT}/json/list" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    tabs = json.load(sys.stdin)
+    pages = [t for t in tabs if t.get('type') == 'page']
+    print(len(pages))
+except:
+    print(0)
+" 2>/dev/null || echo "0")
+
+  if [[ "$TAB_COUNT" -eq 0 ]]; then
+    echo "No tabs open. Opening a new tab..."
+    curl -s --max-time 3 "http://localhost:${PORT}/json/new" >/dev/null 2>&1 || true
+    echo "New tab opened on existing browser (port ${PORT}). Exiting."
+    return 1
+  else
+    echo "Browser already has ${TAB_COUNT} tab(s) open on port ${PORT}. Exiting."
+    return 1
   fi
 }
 
@@ -170,7 +206,9 @@ start_chrome() {
     exit 1
   }
 
-  kill_port "$PORT"
+  if ! handle_occupied_port "$PORT"; then
+    exit 0
+  fi
   echo "Starting Chrome with remote debugging on port ${PORT}..."
   echo "Chrome binary: ${CHROME_BIN}"
   echo
@@ -263,7 +301,10 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
           exit 1
         }
 
-        kill_port "$PORT"
+        if ! handle_occupied_port "$PORT"; then
+          release_lock "$LOCKDIR"
+          exit 0
+        fi
 
         # Filter out port arguments from remaining args for Chrome
         CHROME_USER_ARGS=()
