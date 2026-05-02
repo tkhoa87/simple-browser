@@ -106,9 +106,20 @@ pm2_process_exists() {
 pm2_process_online() {
   local NAME="$1"
   local STATUS
+  # pm2 jlist may prepend warning lines (e.g. "In-memory PM2 is out-of-date")
+  # before the JSON array, so locate the first '[' and parse from there.
   STATUS=$(npx --yes pm2@latest jlist 2>/dev/null | python3 -c "
-import sys, json
-procs = json.load(sys.stdin)
+import sys, json, re
+text = sys.stdin.read()
+# Strip ANSI escape sequences, then locate the JSON array.
+text = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', text)
+i = text.find('[{')
+if i < 0:
+    sys.exit(0)
+try:
+    procs = json.loads(text[i:])
+except Exception:
+    sys.exit(0)
 for p in procs:
     if p.get('name') == '$NAME':
         print(p.get('pm2_env', {}).get('status', ''))
@@ -281,18 +292,22 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
         acquire_lock "$LOCKDIR"
         trap "release_lock '$LOCKDIR'" EXIT
 
-        # Check if process already exists in PM2 (inside lock to prevent races)
-        if pm2_process_exists "$NAME"; then
-          if pm2_process_online "$NAME"; then
-            echo
-            echo "${NAME} already running in PM2. Skipping start."
-            release_lock "$LOCKDIR"
-            exit 0
-          else
-            echo
-            echo "${NAME} exists but is not running. Restarting..."
-            npx --yes pm2@latest delete "$NAME" 2>/dev/null || true
+        # Port is the source of truth. Chrome forks on launch and the parent
+        # often exits, so PM2 may mark the entry "stopped" while the real
+        # browser is still serving CDP. Check the port first.
+        if ! handle_occupied_port "$PORT"; then
+          # CDP is live. Only clean up PM2 entries that are stale —
+          # leave correctly-tracked entries alone.
+          if pm2_process_exists "$NAME" && ! pm2_process_online "$NAME"; then
+            npx --yes pm2@latest delete "$NAME" &>/dev/null || true
           fi
+          release_lock "$LOCKDIR"
+          exit 0
+        fi
+
+        # Port is free — clear any stale PM2 entry before starting fresh.
+        if pm2_process_exists "$NAME"; then
+          npx --yes pm2@latest delete "$NAME" &>/dev/null || true
         fi
 
         CHROME_BIN=$(find_chrome) || {
@@ -300,11 +315,6 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
           echo "Error: Chrome not found. Install Google Chrome or Chromium." >&2
           exit 1
         }
-
-        if ! handle_occupied_port "$PORT"; then
-          release_lock "$LOCKDIR"
-          exit 0
-        fi
 
         # Filter out port arguments from remaining args for Chrome
         CHROME_USER_ARGS=()
@@ -351,18 +361,20 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
         acquire_lock "$LOCKDIR"
         trap "release_lock '$LOCKDIR'" EXIT
 
-        # Check if process already exists in PM2 (inside lock to prevent races)
-        if pm2_process_exists "$NAME"; then
-          if pm2_process_online "$NAME"; then
-            echo
-            echo "${NAME} already running in PM2. Skipping start."
-            release_lock "$LOCKDIR"
-            exit 0
-          else
-            echo
-            echo "${NAME} exists but is not running. Restarting..."
-            npx --yes pm2@latest delete "$NAME" 2>/dev/null || true
+        # Port is the source of truth — same rationale as the chrome branch.
+        if ! handle_occupied_port "$PORT"; then
+          # CDP is live. Only clean up PM2 entries that are stale —
+          # leave correctly-tracked entries alone.
+          if pm2_process_exists "$NAME" && ! pm2_process_online "$NAME"; then
+            npx --yes pm2@latest delete "$NAME" &>/dev/null || true
           fi
+          release_lock "$LOCKDIR"
+          exit 0
+        fi
+
+        # Port is free — clear any stale PM2 entry before starting fresh.
+        if pm2_process_exists "$NAME"; then
+          npx --yes pm2@latest delete "$NAME" &>/dev/null || true
         fi
 
         # Build args string without browser option
