@@ -209,7 +209,8 @@ except:
 # Start Chrome with remote debugging
 start_chrome() {
   local PORT="${1:-${REMOTE_DEBUGGING_PORT:-9222}}"
-  local USER_DATA_DIR="/tmp/simple-browser-${PORT}"
+  local USER_DATA_DIR="${HOME}/Library/Application Support/simple-browser/chrome-${PORT}"
+  mkdir -p "${USER_DATA_DIR}"
   shift || true
   local CHROME_BIN
   CHROME_BIN=$(find_chrome) || {
@@ -339,8 +340,9 @@ if [[ "${1:-}" == "start" ]] || [[ "${1:-}" == "stop" ]]; then
         done
 
         # Build Chrome command
-        USER_DATA_DIR="/tmp/simple-browser-${PORT}"
-        CHROME_CMD="\"${CHROME_BIN}\" --remote-debugging-port=${PORT} --user-data-dir=${USER_DATA_DIR} --no-first-run --no-default-browser-check --start-maximized"
+        USER_DATA_DIR="${HOME}/Library/Application Support/simple-browser/chrome-${PORT}"
+        mkdir -p "${USER_DATA_DIR}"
+        CHROME_CMD="\"${CHROME_BIN}\" --remote-debugging-port=${PORT} --user-data-dir=\"${USER_DATA_DIR}\" --no-first-run --no-default-browser-check --start-maximized"
 
         # Add user args
         for arg in "${CHROME_USER_ARGS[@]+"${CHROME_USER_ARGS[@]}"}"; do

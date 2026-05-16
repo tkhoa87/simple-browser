@@ -3,6 +3,7 @@
     "module": "Node16",
     "strict": true,
     "outDir": "build",
+    "rootDir": "src",
     "preserveWatchOutput": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,

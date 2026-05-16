@@ -1,4 +1,6 @@
 import path from "node:path";
+import os from "node:os";
+import fs from "node:fs";
 import { execSync, execFileSync } from "node:child_process";
 import http from "node:http";
 import net from "node:net";
@@ -159,6 +161,16 @@ const shouldStart = await handleOccupiedPort(remoteDebuggingPort);
 if (!shouldStart) {
   app.exit(0);
 }
+
+const userDataDir = path.join(
+  os.homedir(),
+  "Library",
+  "Application Support",
+  "simple-browser",
+  `electron-${remoteDebuggingPort}`,
+);
+fs.mkdirSync(userDataDir, { recursive: true });
+app.setPath("userData", userDataDir);
 
 app.commandLine.appendSwitch("remote-debugging-port", remoteDebuggingPort);
 

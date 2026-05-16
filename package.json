@@ -1,6 +1,6 @@
 {
   "name": "simple-browser",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "type": "module",
   "files": [
     "./build/",
@@ -17,11 +17,11 @@
     "prepublish": "tsc"
   },
   "dependencies": {
-    "electron": "^40.6.1",
+    "electron": "^42.1.0",
     "find-free-ports": "^3.1.1"
   },
   "devDependencies": {
-    "@types/node": "^25.3.3",
-    "typescript": "^5.9.3"
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3"
   }
 }
